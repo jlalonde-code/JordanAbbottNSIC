@@ -28,20 +28,16 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message);
       const audioBase64 = data.audio;
 
-      // Save audio temporarily
       const audioBuffer = Buffer.from(audioBase64, "base64");
       fs.writeFileSync("temp.wav", audioBuffer);
 
-      // Transcribe audio with Whisper
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream("temp.wav"),
         model: "whisper-1"
       });
 
       const userText = transcription.text;
-      console.log("User said:", userText);
 
-      // Generate AI response as Jordan Abbott
       const aiResponse = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -50,14 +46,9 @@ wss.on("connection", (ws) => {
         ]
       });
 
-      const jordanText = aiResponse.choices[0].message.content;
-
-      // Send AI text back to client
-      ws.send(JSON.stringify({ text: jordanText }));
-
+      ws.send(JSON.stringify({ text: aiResponse.choices[0].message.content }));
     } catch (err) {
-      console.error("Error handling message:", err);
-      ws.send(JSON.stringify({ text: "Sorry, something went wrong." }));
+      console.error("Error:", err);
     }
   });
 });
