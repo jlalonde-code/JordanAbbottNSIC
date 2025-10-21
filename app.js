@@ -1,40 +1,30 @@
 import express from "express";
 import { WebSocketServer } from "ws";
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
-// Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Start HTTP server
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+app.use(express.static("."));
 
-// Create WebSocket server
+const server = app.listen(port, () => console.log(`Server running on port ${port}`));
+
 const wss = new WebSocketServer({ server });
 
-wss.on("connection", (ws) => {
-  console.log("Client connected");
+wss.on("connection", ws => {
+  ws.on("message", async message => {
+    const userText = message.toString();
 
-  ws.on("message", async (message) => {
-    console.log("Received:", message.toString());
-
-    // Generate AI response
-    const response = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: message.toString() }]
+      messages: [{ role: "user", content: userText }]
     });
 
-    ws.send(response.choices[0].message.content);
-  });
-
-  ws.on("close", () => {
-    console.log("Client disconnected");
+    const responseText = completion.choices[0].message.content;
+    ws.send(JSON.stringify({ text: responseText }));
   });
 });
