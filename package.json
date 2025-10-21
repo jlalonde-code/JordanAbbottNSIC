@@ -1,4 +1,4 @@
-{
+{"type": "module",}
   "name": "JordanAbbottNSIC",
   "version": "1.0.0",
   "description": "Backend for Jordan Abbott AI practice sales calls",
