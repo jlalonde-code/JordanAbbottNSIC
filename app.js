@@ -1,22 +1,19 @@
-// app.js
 import express from "express";
 import { WebSocketServer } from "ws";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
+import fs from "fs";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Serve static files (like client.js and index.html)
 app.use(express.static("public"));
 
-// Start HTTP server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// WebSocket server for live calls
 const wss = new WebSocketServer({ server });
 
 const openai = new OpenAI({
@@ -31,16 +28,20 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message);
       const audioBase64 = data.audio;
 
-      // Convert audio to text using Whisper
+      // Save audio temporarily
+      const audioBuffer = Buffer.from(audioBase64, "base64");
+      fs.writeFileSync("temp.wav", audioBuffer);
+
+      // Whisper transcription
       const transcription = await openai.audio.transcriptions.create({
-        file: Buffer.from(audioBase64, "base64"),
+        file: fs.createReadStream("temp.wav"),
         model: "whisper-1"
       });
 
       const userText = transcription.text;
       console.log("User said:", userText);
 
-      // Generate AI response (Jordan Abbott style)
+      // AI response
       const aiResponse = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -48,6 +49,14 @@ wss.on("connection", (ws) => {
           { role: "user", content: userText }
         ]
       });
+
+      ws.send(JSON.stringify({ text: aiResponse.choices[0].message.content }));
+
+    } catch (err) {
+      console.error("Error:", err);
+    }
+  });
+});
 
       const jordanText = aiResponse.choices[0].message.content;
 
