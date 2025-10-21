@@ -1,23 +1,19 @@
-const socket = new WebSocket("wss://jordanabbottnsic.onrender.com"); // replace if needed
+const socket = new WebSocket("wss://jordanabbottnsic.onrender.com"); // make sure this matches your Render URL
 const startBtn = document.getElementById("startCall");
 
 let audioContext, mediaStream, processor, input;
 
 startBtn.onclick = async () => {
-  // Initialize audio
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   input = audioContext.createMediaStreamSource(mediaStream);
 
-  // ScriptProcessor for continuous audio chunks
   processor = audioContext.createScriptProcessor(4096, 1, 1);
-
   input.connect(processor);
   processor.connect(audioContext.destination);
 
   processor.onaudioprocess = (e) => {
     const float32Array = e.inputBuffer.getChannelData(0);
-    // Convert Float32Array to 16-bit PCM
     const buffer = new ArrayBuffer(float32Array.length * 2);
     const view = new DataView(buffer);
     let offset = 0;
@@ -29,10 +25,9 @@ startBtn.onclick = async () => {
     socket.send(JSON.stringify({ audio: base64Chunk }));
   };
 
-  console.log("Continuous recording started. Speak now!");
+  console.log("Recording started. Speak now!");
 };
 
-// Play AI responses
 socket.onmessage = (event) => {
   const data = JSON.parse(event.data);
   const utterance = new SpeechSynthesisUtterance(data.text);
