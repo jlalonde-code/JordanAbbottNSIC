@@ -2,14 +2,48 @@
 <html>
   <head>
     <title>Jordan Abbott AI Call</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      #transcript {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: scroll;
+        margin-top: 20px;
+        background: #f9f9f9;
+      }
+      button {
+        margin: 5px;
+        padding: 10px 15px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      select {
+        margin-left: 10px;
+        padding: 5px;
+        font-size: 14px;
+      }
+      h1 {
+        margin-bottom: 15px;
+      }
+    </style>
   </head>
   <body>
     <h1>Talk to Jordan Abbott AI</h1>
+
+    <label for="roundSelect">Choose Round:</label>
+    <select id="roundSelect">
+      <option value="enablement">Enablement Manager (Round 1)</option>
+      <option value="frontline">Frontline Manager (Quarterfinal)</option>
+      <option value="cfo">CFO (Semifinal)</option>
+      <option value="svp">SVP Sales Ops (Final)</option>
+    </select>
+
     <button id="startCall">Start Call</button>
     <button id="stopCall">Stop Call</button>
 
     <h2>Transcript</h2>
-    <div id="transcript" style="border:1px solid #ccc; padding:10px; height:300px; overflow:auto;"></div>
+    <div id="transcript"></div>
 
     <script src="client.js"></script>
   </body>
