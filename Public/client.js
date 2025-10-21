@@ -2,8 +2,10 @@ const socket = new WebSocket("wss://jordanabbottnsic.onrender.com");
 const startBtn = document.getElementById("startCall");
 const stopBtn = document.getElementById("stopCall");
 const transcriptDiv = document.getElementById("transcript");
+const roundSelect = document.getElementById("roundSelect");
 
 let audioContext, mediaStream, processor, input;
+let fullTranscript = []; // store full conversation
 
 startBtn.onclick = async () => {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -28,9 +30,16 @@ startBtn.onclick = async () => {
     }
 
     const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    socket.send(JSON.stringify({ audio: base64Chunk }));
+    socket.send(JSON.stringify({ 
+      audio: base64Chunk,
+      round: roundSelect.value // send selected round to server
+    }));
+
+    // Append user speaking to transcript
+    fullTranscript.push({ speaker: "User", text: "(speaking…)" });
   };
 
+  appendTranscript("System: Call started! Speak now!");
   console.log("Continuous recording started. Speak now!");
 };
 
@@ -42,7 +51,16 @@ stopBtn.onclick = () => {
   processor = null;
   input = null;
   mediaStream = null;
-  console.log("Call stopped.");
+
+  appendTranscript("System: Call stopped.");
+
+  // Optionally, download transcript as JSON for reflection
+  const blob = new Blob([JSON.stringify(fullTranscript, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "call_transcript.json";
+  a.click();
 };
 
 socket.onmessage = (event) => {
@@ -53,8 +71,16 @@ socket.onmessage = (event) => {
   speechSynthesis.speak(utterance);
 
   // Append to transcript
+  appendTranscript("Jordan: " + data.text);
+
+  // Add to full transcript
+  fullTranscript.push({ speaker: "Jordan", text: data.text });
+};
+
+function appendTranscript(text) {
   const p = document.createElement("p");
-  p.textContent = "Jordan: " + data.text;
+  p.textContent = text;
   transcriptDiv.appendChild(p);
   transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
-};
+}
+
