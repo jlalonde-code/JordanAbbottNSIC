@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(express.static("public"));
+app.use(express.static("Public"));
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
