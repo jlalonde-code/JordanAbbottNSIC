@@ -50,6 +50,9 @@ wss.on("connection", (ws) => {
     } catch (err) {
       console.error("Error:", err);
     }
+console.log("User said:", userText);
+console.log("Jordan responds:", aiResponse.choices[0].message.content);
+
   });
 });
 
