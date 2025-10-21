@@ -1,0 +1,14 @@
+{
+  "name": "jordanabbottnsic",
+  "version": "1.0.0",
+  "description": "Backend for Jordan Abbott AI",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "Joseph Lalonde",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
