@@ -1,4 +1,4 @@
-const socket = new WebSocket("wss://jordanabbottnsic.onrender.com"); // make sure this matches your Render URL
+const socket = new WebSocket("wss://jordanabbottnsic.onrender.com");
 const startBtn = document.getElementById("startCall");
 
 let audioContext, mediaStream, processor, input;
@@ -24,7 +24,6 @@ startBtn.onclick = async () => {
     const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
     socket.send(JSON.stringify({ audio: base64Chunk }));
   };
-
   console.log("Recording started. Speak now!");
 };
 
