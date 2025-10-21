@@ -28,45 +28,38 @@ const openai = new OpenAI({
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
 
-  let callTranscript = []; // Store all messages for this session
+  let callTranscript = []; // store all messages
+  let audioChunkCount = 0; // counter for naming temp files
 
   ws.on("message", async (message) => {
     try {
       const data = JSON.parse(message);
 
-      // Stop call action
-      if (data.action === "stop") {
-        ws.send(JSON.stringify({ text: "Call ended.", transcript: callTranscript }));
-        return;
-      }
-
       if (!data.audio) return;
 
-      // Convert audio from base64 to file
+      // Convert base64 audio to file
       const audioBuffer = Buffer.from(data.audio, "base64");
-      fs.writeFileSync("temp.wav", audioBuffer);
+      const tempFileName = `temp-${audioChunkCount}.wav`;
+      fs.writeFileSync(tempFileName, audioBuffer);
+      audioChunkCount++;
 
       // Transcribe audio using Whisper
       const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream("temp.wav"),
+        file: fs.createReadStream(tempFileName),
         model: "whisper-1"
       });
 
-      const userText = transcription.text;
-      callTranscript.push({ speaker: "User", text: userText });
-      console.log("User said:", userText);
+      const userText = transcription.text.trim();
+      if (!userText) return;
 
-      // Build system prompt based on selected round
+      console.log("User said:", userText);
+      callTranscript.push({ speaker: "User", text: userText });
+
+      // Prepare system prompt based on round
       let systemPrompt = `
 You are Jordan Abbott, Account Executive at SpotLogic. Respond exactly as he would
-during the Northeast Intercollegiate Sales Competition (NSIC). You know:
-- SpotLogic product details, pilot pricing, and success metrics
-- Tech.ai company situation and challenges
-- Round-by-round roles: Jordan Abbott, Pat Regan, Alex Marcaida, Jaime Nelson
-- How each round is judged (Approach, Discovery, Connection, Pushback, Close)
-- Buyer personas and typical objections
-- Quick prep guides, ROI math, and relevant talking points
-Always respond using this context and in character as Jordan Abbott.`;
+during the Northeast Intercollegiate Sales Competition (NSIC). Always respond in character
+based on the round and buyer persona context.`;
 
       if (data.round === "enablement") {
         systemPrompt += " Focus on Enablement Manager objectives, BAINTC questions, and speed-to-productivity.";
@@ -87,22 +80,25 @@ Always respond using this context and in character as Jordan Abbott.`;
         ]
       });
 
-      const jordanText = aiResponse.choices[0].message.content;
-      callTranscript.push({ speaker: "Jordan", text: jordanText });
+      const jordanText = aiResponse.choices[0].message.content.trim();
       console.log("Jordan responds:", jordanText);
+      callTranscript.push({ speaker: "Jordan", text: jordanText });
 
-      // Send response back to client
+      // Send AI response to client
       ws.send(JSON.stringify({ text: jordanText }));
+
+      // Clean up temp file
+      fs.unlinkSync(tempFileName);
 
     } catch (err) {
       console.error("Error handling message:", err);
     }
   });
 
-  // Save transcript when connection closes
   ws.on("close", () => {
+    // Save full call transcript
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     fs.writeFileSync(`transcript-${timestamp}.json`, JSON.stringify(callTranscript, null, 2));
-    console.log("Transcript saved for reflection:", `transcript-${timestamp}.json`);
+    console.log("Transcript saved for reflection");
   });
 });
