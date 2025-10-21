@@ -1,41 +1,38 @@
-// client.js
-const socket = new WebSocket("wss://jordanabbottnsic.onrender.com"); // change if different
-
-let mediaRecorder;
-let audioChunks = [];
-
+const socket = new WebSocket("wss://jordanabbottnsic.onrender.com"); // replace if needed
 const startBtn = document.getElementById("startCall");
 
+let audioContext, mediaStream, processor, input;
+
 startBtn.onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
+  // Initialize audio
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  input = audioContext.createMediaStreamSource(mediaStream);
 
-  mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-  mediaRecorder.onstop = sendAudioToServer;
+  // ScriptProcessor for continuous audio chunks
+  processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-  mediaRecorder.start();
-  console.log("Recording started. Speak now!");
+  input.connect(processor);
+  processor.connect(audioContext.destination);
 
-  // Stop recording automatically every 5 seconds (optional for live streaming)
-  setInterval(() => {
-    if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-  }, 5000);
-};
-
-function sendAudioToServer() {
-  const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-  const reader = new FileReader();
-
-  reader.onloadend = () => {
-    const base64Audio = reader.result.split(",")[1];
-    socket.send(JSON.stringify({ audio: base64Audio }));
+  processor.onaudioprocess = (e) => {
+    const float32Array = e.inputBuffer.getChannelData(0);
+    // Convert Float32Array to 16-bit PCM
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    let offset = 0;
+    for (let i = 0; i < float32Array.length; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    socket.send(JSON.stringify({ audio: base64Chunk }));
   };
 
-  reader.readAsDataURL(audioBlob);
-  audioChunks = [];
-}
+  console.log("Continuous recording started. Speak now!");
+};
 
-// Play AI response using browser speech synthesis
+// Play AI responses
 socket.onmessage = (event) => {
   const data = JSON.parse(event.data);
   const utterance = new SpeechSynthesisUtterance(data.text);
