@@ -39,16 +39,21 @@
     <h2>Transcript</h2>
     <div id="transcript"></div>
 
+    <!-- ✅ Only include ONE script for client.js -->
     <script src="client.js"></script>
-    <script>
-      const roundSelect = document.getElementById("roundSelect");
-      const currentRoundDiv = document.getElementById("currentRound");
 
-      // Update displayed current round when dropdown changes
-      roundSelect.onchange = () => {
-        const text = roundSelect.options[roundSelect.selectedIndex].text;
-        currentRoundDiv.textContent = `Current Round: ${text}`;
-      };
+    <!-- ✅ Inline script now reuses the same roundSelect variable -->
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const roundSelectEl = document.getElementById("roundSelect");
+        const currentRoundDiv = document.getElementById("currentRound");
+
+        // Update displayed current round when dropdown changes
+        roundSelectEl.onchange = () => {
+          const text = roundSelectEl.options[roundSelectEl.selectedIndex].text;
+          currentRoundDiv.textContent = `Current Round: ${text}`;
+        };
+      });
     </script>
   </body>
 </html>
