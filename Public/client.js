@@ -30,16 +30,18 @@ startBtn.onclick = async () => {
     }
 
     const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+    // Send audio + selected round
     socket.send(JSON.stringify({ 
       audio: base64Chunk,
-      round: roundSelect.value // send selected round to server
+      round: roundSelect.value 
     }));
 
-    // Append user speaking to transcript
-    fullTranscript.push({ speaker: "User", text: "(speaking…)" });
+    // Append user speaking to transcript (optional placeholder)
+    appendTranscript(`You (speaking…): `);
   };
 
-  appendTranscript("System: Call started! Speak now!");
+  appendTranscript(`System: Call started! Selling to ${roundSelect.options[roundSelect.selectedIndex].text}`);
   console.log("Continuous recording started. Speak now!");
 };
 
@@ -54,7 +56,7 @@ stopBtn.onclick = () => {
 
   appendTranscript("System: Call stopped.");
 
-  // Optionally, download transcript as JSON for reflection
+  // Download transcript as JSON for reflection
   const blob = new Blob([JSON.stringify(fullTranscript, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -83,4 +85,3 @@ function appendTranscript(text) {
   transcriptDiv.appendChild(p);
   transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
 }
-
