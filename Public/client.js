@@ -6,6 +6,8 @@ const roundSelect = document.getElementById("roundSelect");
 
 let audioContext, mediaStream, processor, input;
 let fullTranscript = []; // store full conversation
+let audioBufferArray = []; // store audio chunks
+let sendAudioInterval; // interval ID for sending audio
 
 startBtn.onclick = async () => {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -16,30 +18,43 @@ startBtn.onclick = async () => {
   input.connect(processor);
   processor.connect(audioContext.destination);
 
+  audioBufferArray = [];
   processor.onaudioprocess = (e) => {
-    if (!mediaStream) return; // stop if call ended
-
+    if (!mediaStream) return;
     const float32Array = e.inputBuffer.getChannelData(0);
-    const buffer = new ArrayBuffer(float32Array.length * 2);
-    const view = new DataView(buffer);
+    audioBufferArray.push(new Float32Array(float32Array));
+  };
 
+  // Send buffered audio every 1.5 seconds
+  sendAudioInterval = setInterval(() => {
+    if (!audioBufferArray.length) return;
+
+    const totalLength = audioBufferArray.reduce((sum, arr) => sum + arr.length, 0);
+    const merged = new Float32Array(totalLength);
     let offset = 0;
-    for (let i = 0; i < float32Array.length; i++, offset += 2) {
-      let s = Math.max(-1, Math.min(1, float32Array[i]));
-      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    for (const chunk of audioBufferArray) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Convert to 16-bit PCM
+    const buffer = new ArrayBuffer(merged.length * 2);
+    const view = new DataView(buffer);
+    let pos = 0;
+    for (let i = 0; i < merged.length; i++, pos += 2) {
+      let s = Math.max(-1, Math.min(1, merged[i]));
+      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     }
 
     const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    socket.send(JSON.stringify({ audio: base64Chunk, round: roundSelect.value }));
 
-    // Send audio + selected round
-    socket.send(JSON.stringify({ 
-      audio: base64Chunk,
-      round: roundSelect.value 
-    }));
+    // Show "User speaking…" in transcript
+    appendTranscript("You (speaking…)");
+    fullTranscript.push({ speaker: "User", text: "(speaking…)" });
 
-    // Append user speaking to transcript (optional placeholder)
-    appendTranscript(`You (speaking…): `);
-  };
+    audioBufferArray = []; // clear buffer
+  }, 1500);
 
   appendTranscript(`System: Call started! Selling to ${roundSelect.options[roundSelect.selectedIndex].text}`);
   console.log("Continuous recording started. Speak now!");
@@ -49,6 +64,8 @@ stopBtn.onclick = () => {
   if (processor) processor.disconnect();
   if (input) input.disconnect();
   if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+  if (sendAudioInterval) clearInterval(sendAudioInterval);
+
   audioContext = null;
   processor = null;
   input = null;
@@ -56,7 +73,7 @@ stopBtn.onclick = () => {
 
   appendTranscript("System: Call stopped.");
 
-  // Download transcript as JSON for reflection
+  // Optionally, download transcript as JSON for reflection
   const blob = new Blob([JSON.stringify(fullTranscript, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
