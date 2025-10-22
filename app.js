@@ -1,12 +1,13 @@
-// app.js
 import express from "express";
 import { WebSocketServer } from "ws";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
 import fs from "fs";
-import ffmpegPath from "ffmpeg-static"; // ✅ Add this line
+import ffmpegPath from "ffmpeg-static";  // ✅ Add this
 
 dotenv.config();
+
+console.log("🎬 FFmpeg path:", ffmpegPath); // Optional debug
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -16,7 +17,6 @@ app.use(express.static("Public"));
 
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🎬 FFmpeg path: ${ffmpegPath}`); // ✅ Optional: confirm ffmpeg path
 });
 
 // Create WebSocket server
