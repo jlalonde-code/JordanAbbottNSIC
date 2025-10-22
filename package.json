@@ -11,6 +11,5 @@
     "openai": "^4.10.0",
     "dotenv": "^16.3.1",
     "ffmpeg-static": "^5.1.0"
- Add ffmpeg-static dependency 
   }
 }
