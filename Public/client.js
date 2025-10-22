@@ -1,4 +1,3 @@
-// client.js
 const socket = new WebSocket("wss://jordanabbottnsic.onrender.com");
 
 const startBtn = document.getElementById("startCall");
@@ -20,6 +19,14 @@ function appendTranscript(text, role = "system") {
   transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
 }
 
+// Convert Float32Array to base64
+function float32ToBase64(float32Array) {
+  const buffer = new ArrayBuffer(float32Array.length * 4);
+  const view = new DataView(buffer);
+  float32Array.forEach((sample, i) => view.setFloat32(i * 4, sample, true));
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
 // Start the conversation
 startBtn.onclick = async () => {
   try {
@@ -31,25 +38,11 @@ startBtn.onclick = async () => {
 
     workletNode = new AudioWorkletNode(audioContext, "microphone-processor");
     workletNode.port.onmessage = (e) => {
-      const float32Array = e.data;
-      chunkBuffer.push(...float32Array);
+      chunkBuffer.push(...e.data);
 
-      // Send audio every 3 seconds
-      if (Date.now() - lastSent > 3000 && socket.readyState === WebSocket.OPEN) {
-        const buffer = new ArrayBuffer(chunkBuffer.length * 2);
-        const view = new DataView(buffer);
-        for (let i = 0; i < chunkBuffer.length; i++) {
-          let s = Math.max(-1, Math.min(1, chunkBuffer[i]));
-          view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-        }
-
-        const base64Chunk = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-        socket.send(
-          JSON.stringify({
-            audio: base64Chunk,
-            round: roundSelect.value,
-          })
-        );
+      if (Date.now() - lastSent > 2000 && socket.readyState === WebSocket.OPEN) {
+        const base64Chunk = float32ToBase64(new Float32Array(chunkBuffer));
+        socket.send(JSON.stringify({ audio: base64Chunk, round: roundSelect.value }));
         chunkBuffer = [];
         lastSent = Date.now();
       }
@@ -62,7 +55,6 @@ startBtn.onclick = async () => {
       `System: Call started. You are selling to ${roundSelect.selectedOptions[0].text}.`,
       "system"
     );
-    console.log("🎧 Microphone stream active.");
   } catch (err) {
     console.error("Error starting call:", err);
     appendTranscript("❌ Microphone access failed.", "system");
@@ -77,9 +69,7 @@ stopBtn.onclick = () => {
 
   appendTranscript("System: Call stopped.", "system");
 
-  const blob = new Blob([JSON.stringify(fullTranscript, null, 2)], {
-    type: "application/json",
-  });
+  const blob = new Blob([JSON.stringify(fullTranscript, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "call_transcript.json";
