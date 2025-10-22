@@ -1,10 +1,9 @@
-import ffmpegPath from "ffmpeg-static";
 import express from "express";
 import { WebSocketServer } from "ws";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
 import fs from "fs";
-import ffmpegPath from "ffmpeg-static";  // ✅ Add this
+import ffmpegPath from "ffmpeg-static";  // ✅ Only once
 
 dotenv.config();
 
